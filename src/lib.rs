@@ -46,8 +46,11 @@ pub struct Schedule {
     pub opt_aging: usize,
 }
 
+pub const LAMBDA_OPT_DEFAULT: f64 = 0.99;
+pub const AGING_OPT_DEFAULT: usize = 10000;
+
 impl Schedule {
-    pub fn new(scheme: Vec<Vec<Event>>) -> Self {
+    pub fn new(scheme: Vec<Vec<Event>>, opt_lambda: f64, opt_aging: usize) -> Self {
         let len = scheme
             .iter()
             .map(|i| i.iter().map(|e| e.len).sum::<usize>())
@@ -56,8 +59,8 @@ impl Schedule {
         Self {
             scheme,
             len,
-            opt_lambda: 0.99,
-            opt_aging: 10000,
+            opt_lambda,
+            opt_aging,
         }
     }
 

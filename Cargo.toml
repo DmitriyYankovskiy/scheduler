@@ -9,9 +9,9 @@ csv = { version = "*" }
 clap = { version = "*", features = ["derive"] }
 
 [lib]
-name = "sheduler"
+name = "scheduler"
 parh = "src/lib.rs"
 
 [[bin]]
-name = "sheduler-cli"
+name = "scheduler-cli"
 path = "src/main.rs"

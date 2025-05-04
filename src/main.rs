@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use sheduler::{Event, Schedule};
+use scheduler::{Event, Schedule};
 
 use clap::{Parser, arg};
 
@@ -119,14 +119,12 @@ impl From<Event> for EventModel {
 #[derive(Debug)]
 struct ScheduleModel(Vec<Vec<EventModel>>);
 
-impl Into<Schedule> for ScheduleModel {
-    fn into(self) -> Schedule {
-        Schedule::new(
-            self.0
-                .into_iter()
-                .map(|i| i.into_iter().map(|e| e.into()).collect())
-                .collect(),
-        )
+impl Into<Vec<Vec<Event>>> for ScheduleModel {
+    fn into(self) -> Vec<Vec<Event>> {
+        self.0
+            .into_iter()
+            .map(|i| i.into_iter().map(|e| e.into()).collect())
+            .collect()
     }
 }
 
@@ -178,7 +176,16 @@ fn validate_input_path(s: &str) -> std::result::Result<PathBuf, String> {
     if path.exists() {
         Ok(path)
     } else {
-        Err(format!("Path '{}' does not exist", s))
+        Err("Path does not exist".to_string())
+    }
+}
+
+fn validate_lambda_opt(s: &str) -> std::result::Result<f64, String> {
+    let val = s.parse::<f64>().map_err(|e| format!("{e}"))?;
+    if 0.0 < val && val < 1.0 {
+        Ok(val)
+    } else {
+        Err("Value is not between 0..1".to_string())
     }
 }
 
@@ -195,6 +202,11 @@ struct Args {
         help = "Output file (can be non-existent)"
     )]
     output_path: PathBuf,
+
+    #[arg(short, long, value_parser = validate_lambda_opt)]
+    lamda_opt: Option<f64>,
+    #[arg(short, long)]
+    aging_opt: Option<usize>,
 }
 
 fn main() -> Result<()> {
@@ -205,7 +217,11 @@ fn main() -> Result<()> {
         .from_path(&args.input_path)
         .unwrap();
     // let mut schedule: Schedule = serde_json::from_str::<ScheduleModel>(&file).unwrap().into();
-    let mut schedule: Schedule = ScheduleModel::deserialize_csv(&mut reader)?.into();
+    let mut schedule = Schedule::new(
+        ScheduleModel::deserialize_csv(&mut reader)?.into(),
+        args.lamda_opt.unwrap_or(scheduler::LAMBDA_OPT_DEFAULT),
+        args.aging_opt.unwrap_or(scheduler::AGING_OPT_DEFAULT),
+    );
     schedule.optimize();
     println!("results cost: {}", schedule.cost());
 
