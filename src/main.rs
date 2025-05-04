@@ -198,6 +198,7 @@ struct Args {
     input_path: PathBuf,
 
     #[arg(
+        short,
         value_parser = clap::value_parser!(PathBuf),
         help = "Output file (can be non-existent)"
     )]
