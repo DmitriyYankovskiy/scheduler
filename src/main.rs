@@ -1,10 +1,12 @@
 use std::{
-    env::args,
     io::{self, Error, ErrorKind, Result},
+    path::PathBuf,
     str::FromStr,
 };
 
 use sheduler::{Event, Schedule};
+
+use clap::{Parser, arg};
 
 #[derive(Debug)]
 struct EventModel {
@@ -171,13 +173,36 @@ impl ScheduleModel {
     }
 }
 
+fn validate_input_path(s: &str) -> std::result::Result<PathBuf, String> {
+    let path = PathBuf::from(s);
+    if path.exists() {
+        Ok(path)
+    } else {
+        Err(format!("Path '{}' does not exist", s))
+    }
+}
+
+#[derive(Parser)]
+struct Args {
+    #[arg(
+        value_parser = validate_input_path,
+        help = "Input file (must exist)"
+    )]
+    input_path: PathBuf,
+
+    #[arg(
+        value_parser = clap::value_parser!(PathBuf),
+        help = "Output file (can be non-existent)"
+    )]
+    output_path: PathBuf,
+}
+
 fn main() -> Result<()> {
-    let input_path = args().nth(1).unwrap();
-    let output_path = args().nth(2).unwrap();
+    let args = Args::parse();
 
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
-        .from_path(&input_path)
+        .from_path(&args.input_path)
         .unwrap();
     // let mut schedule: Schedule = serde_json::from_str::<ScheduleModel>(&file).unwrap().into();
     let mut schedule: Schedule = ScheduleModel::deserialize_csv(&mut reader)?.into();
@@ -186,7 +211,7 @@ fn main() -> Result<()> {
 
     let mut writer = csv::WriterBuilder::new()
         .has_headers(false)
-        .from_path(&output_path)
+        .from_path(&args.output_path)
         .unwrap();
     ScheduleModel::from(schedule)
         .serialize_csv(&mut writer)

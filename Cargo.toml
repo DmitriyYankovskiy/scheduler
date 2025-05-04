@@ -5,14 +5,13 @@ edition = "2024"
 
 [dependencies]
 rand = { version = "*" }
-serde = { version = "*", features = ["derive"] }
-# serde_json = { version = "*" }
-csv = {version = "*"}
+csv = { version = "*" }
+clap = { version = "*", features = ["derive"] }
 
 [lib]
 name = "sheduler"
 parh = "src/lib.rs"
 
 [[bin]]
-name = "sheduler-ui"
+name = "sheduler-cli"
 path = "src/main.rs"
