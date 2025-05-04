@@ -208,6 +208,10 @@ struct Args {
     lamda_opt: Option<f64>,
     #[arg(short, long)]
     aging_opt: Option<usize>,
+    #[arg(short, long)]
+    shuffling: bool,
+    #[arg(short, long)]
+    greedily: bool,
 }
 
 fn main() -> Result<()> {
@@ -218,12 +222,13 @@ fn main() -> Result<()> {
         .from_path(&args.input_path)
         .unwrap();
     // let mut schedule: Schedule = serde_json::from_str::<ScheduleModel>(&file).unwrap().into();
-    let mut schedule = Schedule::new(
-        ScheduleModel::deserialize_csv(&mut reader)?.into(),
+    let mut schedule = Schedule::new(ScheduleModel::deserialize_csv(&mut reader)?.into());
+    schedule.optimize(
         args.lamda_opt.unwrap_or(scheduler::LAMBDA_OPT_DEFAULT),
         args.aging_opt.unwrap_or(scheduler::AGING_OPT_DEFAULT),
+        args.shuffling,
+        args.greedily,
     );
-    schedule.optimize();
     println!("results cost: {}", schedule.cost());
 
     let mut writer = csv::WriterBuilder::new()
