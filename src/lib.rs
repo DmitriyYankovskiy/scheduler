@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use rand::{random_bool, random_range, rng, seq::SliceRandom};
+use rand::{random_bool, random_range, seq::SliceRandom};
 
 type Id = u64;
 
@@ -97,7 +97,6 @@ impl Schedule {
             i.shuffle(&mut rand::rng());
         }
 
-        let m = self.scheme.iter().map(|i| i.len()).max().unwrap();
         let mut t = 1f64;
 
         for _ in 0..self.opt_aging {
