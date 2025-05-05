@@ -65,6 +65,8 @@ fn main() -> Result<()> {
 
     let pb = ProgressBar::new(aging as u64);
 
+    let time = std::time::Instant::now();
+
     schedule.optimize(
         args.lamda_opt.unwrap_or(scheduler::LAMBDA_OPT_DEFAULT),
         aging,
@@ -72,7 +74,9 @@ fn main() -> Result<()> {
         args.greedily,
         || pb.inc(1),
     );
+    let dur = time.elapsed();
     println!("results cost: {}", schedule.cost);
+    println!("calculation time: {}", dur.as_secs_f32());
 
     let mut writer = csv::WriterBuilder::new()
         .has_headers(false)

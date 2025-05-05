@@ -1,7 +1,7 @@
 pub mod models;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     hash::{DefaultHasher, Hash, Hasher},
     rc::Rc,
 };
@@ -79,29 +79,21 @@ impl Schedule {
     }
 
     pub fn update_cost(&mut self) {
-        let mut counts: Vec<HashMap<Id, usize>> = vec![HashMap::new(); self.len];
-
-        for i in &self.scheme {
-            let mut j = 0;
-            for event in i {
+        let mut counts: Vec<BTreeMap<Id, usize>> = vec![BTreeMap::new(); self.len];
+        self.cost = 0;
+        self.scheme.iter().for_each(|i| {
+            i.iter().fold(0, |mut j, event| {
                 for _ in 0..event.len {
                     if let Some(leader_id) = event.leader_id {
                         let prev_count = counts[j].get(&leader_id).unwrap_or(&0).clone();
+                        self.cost += prev_count as Cost;
                         counts[j].insert(leader_id, prev_count + 1);
                         j += 1;
                     }
                 }
-            }
-        }
-
-        self.cost = counts
-            .into_iter()
-            .map(|i| {
-                i.into_iter()
-                    .map(|(_, j)| j as u64 * (j - 1) as u64 / 2)
-                    .sum::<u64>()
-            })
-            .sum::<u64>();
+                j
+            });
+        });
     }
 
     pub fn optimize<F>(
@@ -127,7 +119,7 @@ impl Schedule {
         }
 
         if greedily {
-            let mut columns_sets: Vec<HashSet<Id>> = vec![HashSet::new(); self.len];
+            let mut columns_sets: Vec<BTreeSet<Id>> = vec![BTreeSet::new(); self.len];
             for i in 0..n {
                 let line = &mut self.scheme[i];
                 let mut free_elements = line.clone();
