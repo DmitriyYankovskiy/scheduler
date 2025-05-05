@@ -1,1 +1,0 @@
-for<'a, 'b> fn(Unexpected<'a>, &'b (dyn Expected + 'b)) -> <D as Deserializer<'de>>::Error {<<D as Deserializer<'de>>::Error as serde::de::Error>::invalid_value}

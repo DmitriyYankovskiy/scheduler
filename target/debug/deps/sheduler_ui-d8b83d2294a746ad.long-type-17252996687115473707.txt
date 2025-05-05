@@ -1,1 +1,0 @@
-std::iter::Map<DeserializeRecordsIter<'_, File, Vec<EventModel>>, {closure@src/main.rs:60:14: 60:17}>
