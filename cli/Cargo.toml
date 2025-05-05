@@ -1,0 +1,13 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+scheduler = { path = "../scheduler" }
+clap = { version = "*", features = ["derive"] }
+indicatif = { version = "*" }
+
+[[bin]]
+name = "scheduler-cli"
+path = "src/main.rs"

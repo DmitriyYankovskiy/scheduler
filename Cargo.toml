@@ -1,17 +1,2 @@
-[package]
-name = "scheduler"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-rand = { version = "*" }
-csv = { version = "*" }
-clap = { version = "*", features = ["derive"] }
-
-[lib]
-name = "scheduler"
-parh = "src/lib.rs"
-
-[[bin]]
-name = "scheduler-cli"
-path = "src/main.rs"
+[workspace]
+members = ["scheduler", "cli"]

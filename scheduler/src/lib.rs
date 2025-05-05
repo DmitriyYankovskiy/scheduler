@@ -1,7 +1,8 @@
+pub mod models;
+
 use std::{
     collections::{HashMap, HashSet},
     hash::{DefaultHasher, Hash, Hasher},
-    io::{self, Write},
     rc::Rc,
 };
 
@@ -54,6 +55,8 @@ pub type Cost = u64;
 pub struct Schedule {
     pub scheme: Vec<Vec<Event>>,
     pub len: usize,
+
+    pub cost: Cost,
 }
 
 pub const LAMBDA_OPT_DEFAULT: f64 = 0.99;
@@ -66,10 +69,16 @@ impl Schedule {
             .map(|i| i.iter().map(|e| e.len).sum::<usize>())
             .max()
             .unwrap_or(0);
-        Self { scheme, len }
+        let mut me = Self {
+            scheme,
+            len,
+            cost: 0,
+        };
+        me.update_cost();
+        me
     }
 
-    pub fn cost(&self) -> Cost {
+    pub fn update_cost(&mut self) {
         let mut counts: Vec<HashMap<Id, usize>> = vec![HashMap::new(); self.len];
 
         for i in &self.scheme {
@@ -85,17 +94,26 @@ impl Schedule {
             }
         }
 
-        counts
+        self.cost = counts
             .into_iter()
             .map(|i| {
                 i.into_iter()
                     .map(|(_, j)| j as u64 * (j - 1) as u64 / 2)
                     .sum::<u64>()
             })
-            .sum::<u64>()
+            .sum::<u64>();
     }
 
-    pub fn optimize(&mut self, opt_lambda: f64, opt_aging: usize, shuffling: bool, greedily: bool) {
+    pub fn optimize<F>(
+        &mut self,
+        opt_lambda: f64,
+        opt_aging: usize,
+        shuffling: bool,
+        greedily: bool,
+        mut tick_func: F,
+    ) where
+        F: FnMut(),
+    {
         let n = self.scheme.len();
         if n == 0 {
             return;
@@ -105,6 +123,7 @@ impl Schedule {
             for i in &mut self.scheme {
                 i.shuffle(&mut rand::rng());
             }
+            self.update_cost();
         }
 
         if greedily {
@@ -149,34 +168,25 @@ impl Schedule {
         }
         let mut t = 1f64;
 
-        if opt_aging > 100 {
-            for _ in 0..opt_aging / (opt_aging / 100) {
-                print!("-");
-            }
-            println!();
-        }
-        for iteration in 0..opt_aging {
-            if opt_aging > 100 {
-                if iteration % (opt_aging / 100) == 0 {
-                    print!("█");
-                    io::stdout().flush().unwrap();
-                }
-            }
+        for _ in 0..opt_aging {
             t *= opt_lambda;
 
             let i = random_range(0..self.scheme.len());
             let a = random_range(0..self.scheme[i].len());
             let b = random_range(0..self.scheme[i].len());
 
-            let cost = self.cost();
+            let prev_cost = self.cost;
             self.scheme[i].swap(a, b);
-            let new_cost = self.cost();
+            self.update_cost();
+            let new_cost = self.cost;
 
-            if cost < new_cost && !random_bool(f64::exp((cost as i64 - new_cost as i64) as f64 / t))
+            if prev_cost < new_cost
+                && !random_bool(f64::exp((prev_cost as i64 - new_cost as i64) as f64 / t))
             {
                 self.scheme[i].swap(a, b);
+                self.cost = prev_cost;
             }
+            tick_func();
         }
-        println!();
     }
 }
