@@ -229,7 +229,7 @@ fn main() -> Result<()> {
         args.shuffling,
         args.greedily,
     );
-    println!("results cost: {}", schedule.cost());
+    println!("results cost: {}", schedule.cost);
 
     let mut writer = csv::WriterBuilder::new()
         .has_headers(false)

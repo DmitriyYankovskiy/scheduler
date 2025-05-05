@@ -54,6 +54,9 @@ pub type Cost = u64;
 pub struct Schedule {
     pub scheme: Vec<Vec<Event>>,
     pub len: usize,
+    pub cost: Cost,
+
+    pub len_pref_sums: Vec<Vec<usize>>,
 }
 
 pub const LAMBDA_OPT_DEFAULT: f64 = 0.99;
@@ -66,33 +69,125 @@ impl Schedule {
             .map(|i| i.iter().map(|e| e.len).sum::<usize>())
             .max()
             .unwrap_or(0);
-        Self { scheme, len }
+
+        let len_pref_sums = scheme
+            .iter()
+            .map(|line| {
+                let mut pref = vec![0; line.len() + 1];
+                for i in 0..line.len() {
+                    pref[i + 1] = pref[i] + line[i].len;
+                }
+                pref
+            })
+            .collect();
+
+        let mut me = Self {
+            scheme,
+            len,
+            cost: 0,
+            len_pref_sums,
+        };
+        me.update_cost();
+        me
     }
 
-    pub fn cost(&self) -> Cost {
-        let mut counts: Vec<HashMap<Id, usize>> = vec![HashMap::new(); self.len];
+    fn update_cost(&mut self) {
+        self.cost = {
+            let mut counts: Vec<HashMap<Id, usize>> = vec![HashMap::new(); self.len];
 
-        for i in &self.scheme {
-            let mut j = 0;
-            for event in i {
-                for _ in 0..event.len {
-                    if let Some(leader_id) = event.leader_id {
-                        let prev_count = counts[j].get(&leader_id).unwrap_or(&0).clone();
-                        counts[j].insert(leader_id, prev_count + 1);
-                        j += 1;
+            for i in &self.scheme {
+                let mut j = 0;
+                for event in i {
+                    for _ in 0..event.len {
+                        if let Some(leader_id) = event.leader_id {
+                            let prev_count = counts[j].get(&leader_id).unwrap_or(&0).clone();
+                            counts[j].insert(leader_id, prev_count + 1);
+                            j += 1;
+                        }
                     }
+                }
+            }
+
+            counts
+                .into_iter()
+                .map(|i| {
+                    i.into_iter()
+                        .map(|(_, j)| j as u64 * (j - 1) as u64 / 2)
+                        .sum::<u64>()
+                })
+                .sum::<u64>()
+        };
+    }
+
+    fn swap(&mut self, line: usize, idx: usize) {
+        let l_id = self.scheme[line][idx].leader_id;
+        let r_id = self.scheme[line][idx + 1].leader_id;
+
+        let begin = self.len_pref_sums[line][idx];
+        let end = self.len_pref_sums[line][idx + 2];
+
+        let divider = self.scheme[line][idx].len + begin;
+        let new_divider = self.scheme[line][idx + 1].len + begin;
+
+        fn cross_len(l1: usize, r1: usize, l2: usize, r2: usize) -> usize {
+            let l = std::cmp::max(l1, l2);
+            let r = std::cmp::min(r1, r2);
+            if r <= l { 0 } else { r - l }
+        }
+
+        fn identity<T>(x: T) -> T {
+            x
+        }
+
+        for i in 0..self.scheme.len() {
+            if i == line {
+                continue;
+            }
+
+            let begin_idx = self.len_pref_sums[i]
+                .binary_search(&(begin + 1))
+                .unwrap_or_else(identity)
+                - 1;
+            let end_idx = self.len_pref_sums[i]
+                .binary_search(&end)
+                .unwrap_or_else(identity);
+
+            for j in begin_idx..end_idx {
+                if self.scheme[i][j].leader_id == l_id {
+                    self.cost -= cross_len(
+                        begin,
+                        divider,
+                        self.len_pref_sums[i][j],
+                        self.len_pref_sums[i][j + 1],
+                    ) as u64;
+
+                    self.cost += cross_len(
+                        new_divider,
+                        end,
+                        self.len_pref_sums[i][j],
+                        self.len_pref_sums[i][j + 1],
+                    ) as u64;
+                }
+
+                if self.scheme[i][j].leader_id == r_id {
+                    self.cost -= cross_len(
+                        divider,
+                        end,
+                        self.len_pref_sums[i][j],
+                        self.len_pref_sums[i][j + 1],
+                    ) as u64;
+
+                    self.cost += cross_len(
+                        begin,
+                        new_divider,
+                        self.len_pref_sums[i][j],
+                        self.len_pref_sums[i][j + 1],
+                    ) as u64;
                 }
             }
         }
 
-        counts
-            .into_iter()
-            .map(|i| {
-                i.into_iter()
-                    .map(|(_, j)| j as u64 * (j - 1) as u64 / 2)
-                    .sum::<u64>()
-            })
-            .sum::<u64>()
+        self.scheme[line].swap(idx, idx + 1);
     }
 
     pub fn optimize(&mut self, opt_lambda: f64, opt_aging: usize, shuffling: bool, greedily: bool) {
@@ -147,11 +242,13 @@ impl Schedule {
                 }
             }
         }
+
+        self.update_cost();
         let mut t = 1f64;
 
         if opt_aging > 100 {
             for _ in 0..opt_aging / (opt_aging / 100) {
-                print!("-");
+                print!("█");
             }
             println!();
         }
@@ -165,16 +262,17 @@ impl Schedule {
             t *= opt_lambda;
 
             let i = random_range(0..self.scheme.len());
-            let a = random_range(0..self.scheme[i].len());
-            let b = random_range(0..self.scheme[i].len());
+            let j = random_range(0..self.scheme[i].len() - 1);
+            // let b = random_range(0..self.scheme[i].len());
 
-            let cost = self.cost();
-            self.scheme[i].swap(a, b);
-            let new_cost = self.cost();
+            let prev_cost = self.cost;
+            self.swap(i, j);
+            let new_cost = self.cost;
 
-            if cost < new_cost && !random_bool(f64::exp((cost as i64 - new_cost as i64) as f64 / t))
+            if prev_cost < new_cost
+                && !random_bool(f64::exp((prev_cost as i64 - new_cost as i64) as f64 / t))
             {
-                self.scheme[i].swap(a, b);
+                self.swap(i, j);
             }
         }
         println!();
