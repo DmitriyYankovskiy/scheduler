@@ -74,6 +74,7 @@ fn main() -> Result<()> {
         args.greedily,
         || pb.inc(1),
     );
+    pb.finish();
     let dur = time.elapsed();
     println!("results cost: {}", schedule.cost);
     println!("calculation time: {}", dur.as_secs_f32());

@@ -54,6 +54,10 @@ pub type Cost = u64;
 
 pub struct Schedule {
     pub scheme: Vec<Vec<Event>>,
+
+    pub event: Vec<Vec<usize>>,
+    pub idx: Vec<Vec<usize>>,
+
     pub len: usize,
 
     pub cost: Cost,
@@ -64,36 +68,105 @@ pub const AGING_OPT_DEFAULT: usize = 10000;
 
 impl Schedule {
     pub fn new(scheme: Vec<Vec<Event>>) -> Self {
-        let len = scheme
+        let lens = scheme
             .iter()
             .map(|i| i.iter().map(|e| e.len).sum::<usize>())
-            .max()
-            .unwrap_or(0);
+            .collect::<Vec<usize>>();
+        let idx = scheme.iter().map(|line| vec![0; line.len() + 1]).collect();
         let mut me = Self {
             scheme,
-            len,
+            len: lens.iter().sum(),
             cost: 0,
+            event: lens.into_iter().map(|len| vec![0; len]).collect(),
+            idx,
         };
-        me.update_cost();
+        me.update();
         me
     }
 
-    pub fn update_cost(&mut self) {
+    pub fn update(&mut self) {
         let mut counts: Vec<BTreeMap<Id, usize>> = vec![BTreeMap::new(); self.len];
         self.cost = 0;
-        self.scheme.iter().for_each(|i| {
-            i.iter().fold(0, |mut j, event| {
+
+        for line in 0..self.scheme.len() {
+            let mut j = 0;
+            for i in 0..self.scheme[line].len() {
+                let event = &self.scheme[line][i];
+                self.idx[line][i + 1] = self.idx[line][i] + event.len;
                 for _ in 0..event.len {
-                    if let Some(leader_id) = event.leader_id {
-                        let prev_count = counts[j].get(&leader_id).unwrap_or(&0).clone();
+                    if let Some(id) = event.leader_id {
+                        let prev_count = counts[j].get(&id).unwrap_or(&0).clone();
                         self.cost += prev_count as Cost;
-                        counts[j].insert(leader_id, prev_count + 1);
-                        j += 1;
+                        counts[j].insert(id, prev_count + 1);
+                    }
+
+                    self.event[line][j] = i;
+                    j += 1;
+                }
+            }
+        }
+
+        // self.scheme.iter().for_each(|i| {
+        //     i.iter().fold(0, |mut j, event| {
+        //         for _ in 0..event.len {
+        //             if let Some(leader_id) = event.leader_id {
+        //                 let prev_count = counts[j].get(&leader_id).unwrap_or(&0).clone();
+        //                 self.cost += prev_count as Cost;
+        //                 counts[j].insert(leader_id, prev_count + 1);
+        //                 j += 1;
+        //             }
+        //         }
+        //         j
+        //     });
+        // });
+    }
+
+    fn swap(&mut self, line: usize, a: usize, b: usize) {
+        if self.scheme[line][a].len == self.scheme[line][b].len {
+            let ai = self.idx[line][a];
+            let bi = self.idx[line][b];
+
+            let mut new_cost: i64 = self.cost as i64;
+
+            let len = self.scheme[line][a].len;
+            for l in 0..self.scheme.len() {
+                if l == line {
+                    continue;
+                }
+
+                for i in ai..ai + len {
+                    if i >= self.event[l].len() {
+                        break;
+                    }
+                    let event = &self.scheme[l][self.event[l][i]];
+                    if event.leader_id == self.scheme[line][b].leader_id {
+                        new_cost += 1;
+                    }
+                    if event.leader_id == self.scheme[line][a].leader_id {
+                        new_cost -= 1;
                     }
                 }
-                j
-            });
-        });
+
+                for i in bi..bi + len {
+                    if i >= self.event[l].len() {
+                        break;
+                    }
+                    let event = &self.scheme[l][self.event[l][i]];
+                    if event.leader_id == self.scheme[line][a].leader_id {
+                        new_cost += 1;
+                    }
+                    if event.leader_id == self.scheme[line][b].leader_id {
+                        new_cost -= 1;
+                    }
+                }
+            }
+
+            self.scheme[line].swap(a, b);
+            self.cost = new_cost as Cost;
+        } else {
+            self.scheme[line].swap(a, b);
+            self.update();
+        }
     }
 
     pub fn optimize<F>(
@@ -101,7 +174,7 @@ impl Schedule {
         opt_lambda: f64,
         opt_aging: usize,
         shuffling: bool,
-        greedily: bool,
+        greedly: bool,
         mut tick_func: F,
     ) where
         F: FnMut(),
@@ -115,49 +188,9 @@ impl Schedule {
             for i in &mut self.scheme {
                 i.shuffle(&mut rand::rng());
             }
-            self.update_cost();
+            self.update();
         }
 
-        if greedily {
-            let mut columns_sets: Vec<BTreeSet<Id>> = vec![BTreeSet::new(); self.len];
-            for i in 0..n {
-                let line = &mut self.scheme[i];
-                let mut free_elements = line.clone();
-                line.clear();
-                let mut time = 0;
-                for j in 0..free_elements.len() {
-                    let mut use_idx = None;
-                    for e_i in 0..free_elements.len() {
-                        let e = &free_elements[e_i];
-                        if e.leader_id == None
-                            || !columns_sets[time].contains(&e.leader_id.unwrap())
-                        {
-                            if let Some(id) = e.leader_id {
-                                for addi in 0..e.len {
-                                    columns_sets[j + addi].insert(id);
-                                }
-                            }
-                            time += e.len;
-                            use_idx = Some(e_i);
-                            break;
-                        }
-                    }
-
-                    if use_idx == None {
-                        let e = &free_elements[free_elements.len() - 1];
-                        if let Some(id) = e.leader_id {
-                            for addi in 0..e.len {
-                                columns_sets[j + addi].insert(id);
-                            }
-                        }
-                        time += e.len;
-                        use_idx = Some(free_elements.len() - 1);
-                    }
-
-                    line.push(free_elements.remove(use_idx.unwrap()));
-                }
-            }
-        }
         let mut t = 1f64;
 
         for _ in 0..opt_aging {
@@ -168,10 +201,8 @@ impl Schedule {
             let b = random_range(0..self.scheme[i].len());
 
             let prev_cost = self.cost;
-            self.scheme[i].swap(a, b);
-            self.update_cost();
+            self.swap(i, a, b);
             let new_cost = self.cost;
-
             if prev_cost < new_cost
                 && !random_bool(f64::exp((prev_cost as i64 - new_cost as i64) as f64 / t))
             {
@@ -179,6 +210,11 @@ impl Schedule {
                 self.cost = prev_cost;
             }
             tick_func();
+            if self.cost == 0 {
+                break;
+            }
         }
+
+        self.update();
     }
 }
