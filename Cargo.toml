@@ -1,2 +1,2 @@
 [workspace]
-members = ["scheduler", "cli"]
+members = ["scheduler", "cli", "generator"]
