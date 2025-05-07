@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 rand = { version = "*" }
 csv = { version = "*" }
+indexmap = { version = "*" }
 
 [lib]
 name = "scheduler"

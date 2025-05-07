@@ -1,12 +1,14 @@
 pub mod models;
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    hash::{DefaultHasher, Hash, Hasher},
-    rc::Rc,
+use {
+    indexmap::IndexMap,
+    rand::{random_bool, random_range, seq::SliceRandom},
+    std::{
+        collections::BTreeMap,
+        hash::{DefaultHasher, Hash, Hasher},
+        rc::Rc,
+    },
 };
-
-use rand::{random_bool, random_range, seq::SliceRandom};
 
 type Id = u64;
 
@@ -58,6 +60,8 @@ pub struct Schedule {
     pub event: Vec<Vec<usize>>,
     pub idx: Vec<Vec<usize>>,
 
+    pub collisions: IndexMap<(usize, usize), usize>,
+
     pub len: usize,
 
     pub cost: Cost,
@@ -78,6 +82,7 @@ impl Schedule {
             len: lens.iter().sum(),
             cost: 0,
             event: lens.into_iter().map(|len| vec![0; len]).collect(),
+            collisions: IndexMap::new(),
             idx,
         };
         me.update();
@@ -95,7 +100,7 @@ impl Schedule {
                 self.idx[line][i + 1] = self.idx[line][i] + event.len;
                 for _ in 0..event.len {
                     if let Some(id) = event.leader_id {
-                        let prev_count = counts[j].get(&id).unwrap_or(&0).clone();
+                        let prev_count = *counts[j].get(&id).unwrap_or(&0);
                         self.cost += prev_count as Cost;
                         counts[j].insert(id, prev_count + 1);
                     }
@@ -106,27 +111,41 @@ impl Schedule {
             }
         }
 
-        // self.scheme.iter().for_each(|i| {
-        //     i.iter().fold(0, |mut j, event| {
-        //         for _ in 0..event.len {
-        //             if let Some(leader_id) = event.leader_id {
-        //                 let prev_count = counts[j].get(&leader_id).unwrap_or(&0).clone();
-        //                 self.cost += prev_count as Cost;
-        //                 counts[j].insert(leader_id, prev_count + 1);
-        //                 j += 1;
-        //             }
-        //         }
-        //         j
-        //     });
-        // });
+        self.collisions.clear();
+
+        for line in 0..self.scheme.len() {
+            let mut j = 0;
+            for i in 0..self.scheme[line].len() {
+                let event = &self.scheme[line][i];
+                for _ in 0..event.len {
+                    if let Some(id) = event.leader_id {
+                        let c = *counts[j].get(&id).unwrap_or(&0);
+                        if c >= 2 {
+                            let prev = *self.collisions.get(&(line, i)).unwrap_or(&0);
+                            self.collisions.insert((line, i), prev + c - 1);
+                        }
+                    }
+                    j += 1;
+                }
+            }
+        }
     }
 
     fn swap(&mut self, line: usize, a: usize, b: usize) {
+        if a == b {
+            return;
+        }
         if self.scheme[line][a].len == self.scheme[line][b].len {
             let ai = self.idx[line][a];
             let bi = self.idx[line][b];
 
             let mut new_cost: i64 = self.cost as i64;
+
+            self.collisions.swap_remove(&(line, a));
+            self.collisions.swap_remove(&(line, b));
+
+            let mut coll_a = 0usize;
+            let mut coll_b = 0usize;
 
             let len = self.scheme[line][a].len;
             for l in 0..self.scheme.len() {
@@ -138,11 +157,24 @@ impl Schedule {
                     if i >= self.event[l].len() {
                         break;
                     }
-                    let event = &self.scheme[l][self.event[l][i]];
+                    let index = self.event[l][i];
+                    let event = &self.scheme[l][index];
                     if event.leader_id == self.scheme[line][b].leader_id {
+                        let prev = self.collisions.get(&(l, index)).unwrap_or(&0);
+                        self.collisions.insert((l, index), prev + 1);
                         new_cost += 1;
+                        coll_a += 1;
                     }
                     if event.leader_id == self.scheme[line][a].leader_id {
+                        let prev = self
+                            .collisions
+                            .get(&(l, index))
+                            .unwrap_or_else(|| panic!("{line} {a} {b} {index} {l}"));
+                        if *prev > 1 {
+                            self.collisions.insert((l, index), prev - 1);
+                        } else {
+                            self.collisions.swap_remove(&(l, index));
+                        }
                         new_cost -= 1;
                     }
                 }
@@ -151,14 +183,37 @@ impl Schedule {
                     if i >= self.event[l].len() {
                         break;
                     }
-                    let event = &self.scheme[l][self.event[l][i]];
+                    let index = self.event[l][i];
+                    let event = &self.scheme[l][index];
                     if event.leader_id == self.scheme[line][a].leader_id {
+                        let prev = self.collisions.get(&(l, index)).unwrap_or(&0);
+                        self.collisions.insert((l, index), prev + 1);
                         new_cost += 1;
+                        coll_b += 1;
                     }
                     if event.leader_id == self.scheme[line][b].leader_id {
+                        // dbg!((l, index));
+                        let prev = self
+                            .collisions
+                            .get(&(l, index))
+                            .unwrap_or_else(|| panic!("{line} {a} {b} {index} {l}"));
+
+                        if *prev > 1 {
+                            self.collisions.insert((l, index), prev - 1);
+                        } else {
+                            self.collisions.swap_remove(&(l, index));
+                        }
                         new_cost -= 1;
                     }
                 }
+            }
+
+            if coll_a >= 1 {
+                self.collisions.insert((line, a), coll_a);
+            }
+
+            if coll_b >= 1 {
+                self.collisions.insert((line, b), coll_b);
             }
 
             self.scheme[line].swap(a, b);
@@ -196,18 +251,28 @@ impl Schedule {
         for _ in 0..opt_aging {
             t *= opt_lambda;
 
-            let i = random_range(0..self.scheme.len());
-            let a = random_range(0..self.scheme[i].len());
-            let b = random_range(0..self.scheme[i].len());
-
+            let (i, a, b) = if greedly {
+                let (i, a) = *self
+                    .collisions
+                    .get_index(random_range(0..self.collisions.len()))
+                    .unwrap()
+                    .0;
+                (i, a, random_range(0..self.scheme[i].len()))
+            } else {
+                let i = random_range(0..self.scheme.len());
+                (
+                    i,
+                    random_range(0..self.scheme[i].len()),
+                    random_range(0..self.scheme[i].len()),
+                )
+            };
             let prev_cost = self.cost;
             self.swap(i, a, b);
             let new_cost = self.cost;
             if prev_cost < new_cost
                 && !random_bool(f64::exp((prev_cost as i64 - new_cost as i64) as f64 / t))
             {
-                self.scheme[i].swap(a, b);
-                self.cost = prev_cost;
+                self.swap(i, a, b);
             }
             tick_func();
             if self.cost == 0 {
