@@ -1,2 +1,2 @@
 [workspace]
-members = ["scheduler", "cli", "generator"]
+members = ["scheduler", "cli", "generator", "application/src-tauri"]
