@@ -6,12 +6,11 @@ let resultEl;
 
 async function send_file() {
   console.log(await fileInputEl.files[0].text());
-  result.textContent = await invoke("work_with", { file: await fileInputEl.files[0].text(), path: pathInputEl.value});
+  result.textContent = await invoke("work_with", { file: await fileInputEl.files[0].text() });
 }
 
 window.addEventListener("DOMContentLoaded", () => {
   fileInputEl = document.querySelector("#file-input");
-  pathInputEl = document.querySelector("#result-path-input");
   resultEl = document.querySelector("#result");
   document.querySelector("#file-form").addEventListener("submit", (e) => {
     e.preventDefault();
