@@ -25,7 +25,7 @@ fn main() -> Result<()> {
     let mut file = File::create(args.output_path).unwrap();
 
     let mut s = String::new();
-    for l in 0..args.n {
+    for _ in 0..args.n {
         for i in 1..=args.n {
             s += &format!("{i}:{i},");
         }
