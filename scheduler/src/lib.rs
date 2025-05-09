@@ -6,7 +6,7 @@ use {
     std::{
         collections::BTreeMap,
         hash::{DefaultHasher, Hash, Hasher},
-        rc::Rc,
+        sync::Arc,
     },
 };
 
@@ -14,8 +14,8 @@ type Id = u64;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Event {
-    pub name: Rc<str>,
-    pub leader_name: Option<Rc<str>>,
+    pub name: Arc<str>,
+    pub leader_name: Option<Arc<str>>,
     pub leader_id: Option<Id>,
     pub len: usize,
 }
@@ -28,9 +28,9 @@ impl Hash for Event {
 
 impl Event {
     pub fn new(name: Box<str>, leader_name: Option<Box<str>>, len: usize) -> Self {
-        let name: Rc<str> = Rc::from(name);
+        let name: Arc<str> = Arc::from(name);
 
-        let leader_name: Option<Rc<str>> = leader_name.map(|name| Rc::from(name));
+        let leader_name: Option<Arc<str>> = leader_name.map(|name| Arc::from(name));
 
         let leader_id = leader_name.clone().map(|name| {
             let mut hasher = DefaultHasher::new();
