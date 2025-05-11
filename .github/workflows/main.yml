@@ -1,0 +1,46 @@
+name: Windows Build via Cargo
+
+on:
+  workflow_dispatch: # Только ручной запуск
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rust-src, clippy
+
+    - name: Install WebView2
+      run: choco install webview2
+
+    - name: Install Tauri CLI
+      run: cargo install tauri-cli
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build project
+      run: |
+        cargo tauri build --verbose --target x86_64-pc-windows-msvc
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-binaries
+        path: |
+          src-tauri/target/x86_64-pc-windows-msvc/release/*.exe
+          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
