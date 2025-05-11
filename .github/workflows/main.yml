@@ -36,8 +36,6 @@ jobs:
     - name: Build project
       run: |
         cargo tauri build --verbose --target x86_64-pc-windows-msvc -- 
-    - name: Visualisation
-      run: dir /S
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -46,3 +44,5 @@ jobs:
           target/debug/*.exe
           target/debug/*.msi
           src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+    - name: Visualisation
+      run: Get-ChildItem -Path ".\target" -Recurse
