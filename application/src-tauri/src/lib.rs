@@ -1,11 +1,11 @@
+use tauri_plugin_dialog::DialogExt;
 use {
     scheduler::{
         models::{csv, ScheduleModel},
         Schedule,
     },
-    std::{fs::File, io::Write, sync::{Arc, Mutex}}, tauri::AppHandle,
+    tauri::AppHandle,
 };
-use tauri_plugin_dialog::DialogExt;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -22,7 +22,6 @@ fn work_with(app: AppHandle, file: &str) -> String {
     let time = std::time::Instant::now();
 
     schedule.optimize(0.999, aging, true, true, || ());
-
 
     let dur = time.elapsed();
     println!("results cost: {}", schedule.cost);
@@ -42,7 +41,6 @@ fn work_with(app: AppHandle, file: &str) -> String {
             ScheduleModel::from(schedule)
                 .serialize_csv(&mut writer)
                 .unwrap();
-            
         });
     "Success".to_string()
 }
