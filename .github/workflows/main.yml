@@ -11,6 +11,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Artifacts
+      uses: actions/upload-artifact@v4.0.0
+
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
