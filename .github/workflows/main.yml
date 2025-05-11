@@ -19,7 +19,7 @@ jobs:
         components: rust-src, clippy
 
     - name: Install WebView2
-      run: choco install webview2
+      run: choco install webview2-runtime
 
     - name: Install Tauri CLI
       run: cargo install tauri-cli
