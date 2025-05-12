@@ -31,7 +31,7 @@ fn work_with(app: AppHandle, file: &str) -> String {
 
     app.dialog()
         .file()
-        .add_filter("My Filter", &["png", "jpeg"])
+        .add_filter("Schdedule table", &["csv", "txt"])
         .save_file(|path| {
             let path = path.unwrap();
             let mut writer = csv::WriterBuilder::new()

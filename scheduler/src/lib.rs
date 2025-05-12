@@ -229,7 +229,7 @@ impl Schedule {
         opt_lambda: f64,
         opt_aging: usize,
         shuffling: bool,
-        greedly: bool,
+        greedily: bool,
         mut tick_func: F,
     ) where
         F: FnMut(),
@@ -251,7 +251,7 @@ impl Schedule {
         for _ in 0..opt_aging {
             t *= opt_lambda;
 
-            let (i, a, b) = if greedly {
+            let (i, a, b) = if greedily {
                 let (i, a) = *self
                     .collisions
                     .get_index(random_range(0..self.collisions.len()))

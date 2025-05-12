@@ -1,21 +1,265 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title> Scheduler </title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="styles.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css"
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Scheduler</title>
+        <script type="module" src="/main.js" defer></script>
+    </head>
 
-  <body>
-    <main class="container">
-      <h1>Make schedule</h1>
-      <form class="row" id="file-form">
-        <input id="file-input" type="file"/>
-        <button type="submit">Send</button>
-      </form>
-      <p id="result"></p>
-    </main>
-  </body>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            font-family: "Inter", sans-serif;
+            background-color: #2a2a2a;
+        }
+
+        .container,
+        .container * {
+            --height: min(90vh, 54vw);
+            --width: calc(var(--height) * 5 / 3);
+
+            --gap: calc(var(--height) * 0.05);
+        }
+
+        .container {
+            width: var(--width);
+            height: var(--height);
+            background-color: #2a2a2a;
+            border-radius: 24px;
+
+            padding: 0;
+
+            gap: var(--gap);
+
+            display: flex;
+            flex-direction: column;
+        }
+        .buttons-container {
+            flex: 1;
+            display: flex;
+            gap: var(--gap);
+            width: 100%;
+        }
+        .file-select,
+        .optimize-btn {
+            flex: 1;
+            /* height: 376px; */
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-select {
+            background-color: #222222;
+        }
+        .file-select:hover {
+            background-color: #2d2d2d;
+        }
+        .optimize-btn {
+            background-color: #7fbeb3;
+        }
+        .optimize-btn:hover {
+            opacity: 0.9;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .icon-container {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .file-select .text-primary {
+            color: #e5e5e5;
+            font-size: 24px;
+        }
+        .file-select .text-secondary {
+            color: #808080;
+            font-size: 16px;
+            margin-top: 8px;
+        }
+        .optimize-btn .text-primary {
+            color: #1a1a1a;
+            font-size: 28px;
+            font-weight: 500;
+        }
+        .optimize-btn .text-secondary {
+            color: #333333;
+            font-size: 16px;
+            margin-top: 8px;
+        }
+        .input-group {
+            flex: 0;
+            display: flex;
+            height: calc(var(--height) * 0.11);
+            align-items: center;
+            gap: var(--gap);
+        }
+        .number-input {
+            flex: 1;
+            height: 100%;
+            background-color: #f3f3f3;
+            border-radius: 12px;
+            border: 0;
+            padding: 0;
+            padding-left: calc(var(--gap));
+            font-size: 22px;
+            color: #333;
+        }
+        .number-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #7fbeb3;
+        }
+        .checkbox-group {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            background-color: #222222;
+            border-radius: 12px;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        .custom-checkbox {
+            appearance: none;
+            padding: 0;
+            margin: 0;
+            margin-left: calc(var(--gap) / 2);
+            margin-right: calc(var(--gap) / 2);
+            width: var(--gap);
+            height: var(--gap);
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            background-color: #2a2a2a;
+        }
+        .custom-checkbox:checked {
+            background-color: #7fbeb3;
+            border-color: #7fbeb3;
+        }
+        .custom-checkbox:checked::after {
+            content: "";
+            position: absolute;
+            left: calc(var(--gap) * 0.2);
+            top: calc(var(--gap) * -0.05);
+            width: calc(var(--gap) * 0.4);
+            height: calc(var(--gap) * 0.6);
+            border: solid white;
+            border-width: 0 calc(var(--gap) * 0.15) calc(var(--gap) * 0.15) 0;
+            transform: rotate(45deg);
+        }
+        .checkbox-label {
+            color: #e5e5e5;
+            cursor: pointer;
+            margin-right: calc(var(--gap) / 2);
+            font-size: 18px;
+        }
+        .file-info {
+            color: #d1d5db;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+    </style>
+    <body>
+        <div class="container">
+            <div class="buttons-container">
+                <div class="file-select" id="fileSelector">
+                    <div class="text-center">
+                        <div class="icon-container">
+                            <i
+                                class="ri-file-upload-line ri-3x"
+                                style="color: #808080"
+                            ></i>
+                        </div>
+                        <p class="text-primary">Select File</p>
+                        <p class="text-secondary">Click to browse</p>
+                    </div>
+                    <input type="file" style="display: none" id="fileInput" />
+                </div>
+                <div class="optimize-btn" id="optimizeButton">
+                    <div class="text-center">
+                        <div class="icon-container">
+                            <i
+                                class="ri-magic-line ri-3x"
+                                style="color: #1a1a1a"
+                            ></i>
+                        </div>
+                        <p class="text-primary">Optimize</p>
+                        <p class="text-secondary">Process your file</p>
+                    </div>
+                </div>
+            </div>
+            <div class="input-group">
+                <input type="number" value="10000" class="number-input" />
+                <div class="checkbox-group">
+                    <input
+                        type="checkbox"
+                        id="checkbox1"
+                        class="custom-checkbox"
+                    />
+                    <label for="checkbox1" class="checkbox-label"
+                        >Shuffling</label
+                    >
+                </div>
+                <div class="checkbox-group">
+                    <input
+                        type="checkbox"
+                        id="checkbox2"
+                        class="custom-checkbox"
+                    />
+                    <label for="checkbox2" class="checkbox-label"
+                        >Greedily</label
+                    >
+                </div>
+            </div>
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const fileSelector = document.getElementById("fileSelector");
+                const fileInput = document.getElementById("fileInput");
+                fileSelector.addEventListener("click", function () {
+                    fileInput.click();
+                });
+                fileInput.addEventListener("change", function () {
+                    if (this.files && this.files[0]) {
+                        const fileName = this.files[0].name;
+                        const fileInfo = document.createElement("p");
+                        fileInfo.textContent = fileName;
+                        fileInfo.className = "file-info";
+                        const previousFileInfo =
+                            fileSelector.querySelector(".file-info");
+                        if (previousFileInfo) {
+                            fileSelector.removeChild(previousFileInfo);
+                        }
+                        fileSelector
+                            .querySelector("div.text-center")
+                            .appendChild(fileInfo);
+                    }
+                });
+            });
+        </script>
+    </body>
 </html>
