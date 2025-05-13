@@ -9,7 +9,7 @@ use {
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
-fn work_with(app: AppHandle, file: &str) -> String {
+fn work_with(app: AppHandle, file: &str, aging: usize, shuffling: bool, greedily: bool) -> u64 {
     let file = file.to_string();
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
@@ -17,17 +17,14 @@ fn work_with(app: AppHandle, file: &str) -> String {
     // let mut schedule: Schedule = serde_json::from_str::<ScheduleModel>(&file).unwrap().into();
     let mut schedule = Schedule::new(ScheduleModel::deserialize_csv(&mut reader).unwrap().into());
 
-    let aging = 10000; //args.aging_opt.unwrap_or(scheduler::AGING_OPT_DEFAULT);
-
     let time = std::time::Instant::now();
 
-    schedule.optimize(0.999, aging, true, true, || ());
+    schedule.optimize(0.999, aging, shuffling, greedily, || ());
 
     let dur = time.elapsed();
-    println!("results cost: {}", schedule.cost);
+    let cost = schedule.cost;
+    println!("results cost: {}", cost);
     println!("calculation time: {}", dur.as_secs_f32());
-
-    //let schedule = Arc::new(Mutex::new(schedule));
 
     app.dialog()
         .file()
@@ -42,7 +39,8 @@ fn work_with(app: AppHandle, file: &str) -> String {
                 .serialize_csv(&mut writer)
                 .unwrap();
         });
-    "Success".to_string()
+
+    cost
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

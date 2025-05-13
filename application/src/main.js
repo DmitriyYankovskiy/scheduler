@@ -45,9 +45,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     async function send_file() {
         console.log(await fileInput.files[0].text());
-        /*result.textContent = */ await invoke("work_with", {
+        let cost = await invoke("work_with", {
             file: await fileInput.files[0].text(),
+            aging: Number(document.querySelector(".aging-input").value),
+            shuffling: document.querySelector("#checkboxShuffling").checked,
+            greedily: document.querySelector("#checkboxGreedily").checked,
         });
+
+        console.log(cost);
     }
 
     document.querySelector("#optimizeButton").addEventListener("click", (e) => {

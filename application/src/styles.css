@@ -126,7 +126,7 @@ body {
     align-items: center;
     gap: var(--gap);
 }
-.number-input {
+.aging-input {
     flex: 1;
 
     width: 0;
@@ -139,7 +139,7 @@ body {
     font-size: 22px;
     color: #333;
 }
-.number-input:focus {
+.aging-input:focus {
     outline: none;
     box-shadow: 0 0 0 2px #7fbeb3;
 }
