@@ -47,11 +47,6 @@ impl Event {
     }
 }
 
-pub enum Precalc {
-    Shuffling,
-    Greedily,
-}
-
 pub type Cost = u64;
 
 pub struct Schedule {
@@ -234,8 +229,9 @@ impl Schedule {
     ) where
         F: FnMut(),
     {
+        self.update();
         let n = self.scheme.len();
-        if n == 0 {
+        if n == 0 || self.cost == 0 {
             return;
         }
 

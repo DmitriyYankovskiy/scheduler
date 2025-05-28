@@ -128,6 +128,16 @@ impl Into<Vec<Vec<Event>>> for ScheduleModel {
     }
 }
 
+impl From<Vec<Vec<Event>>> for ScheduleModel {
+    fn from(e: Vec<Vec<Event>>) -> Self {
+        ScheduleModel(
+            e.into_iter()
+                .map(|i| i.into_iter().map(|e| e.into()).collect())
+                .collect(),
+        )
+    }
+}
+
 impl From<Schedule> for ScheduleModel {
     fn from(s: Schedule) -> Self {
         ScheduleModel(

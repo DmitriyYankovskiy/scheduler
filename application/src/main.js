@@ -1,31 +1,46 @@
 const { invoke } = window.__TAURI__.core;
 
-// let fileInputEl;
-// let pathInputEl;
-// let resultEl;
-
-// async function send_file() {
-//     console.log(await fileInputEl.files[0].text());
-//     result.textContent = await invoke("work_with", {
-//         file: await fileInputEl.files[0].text(),
-//     });
-// }
-
-// window.addEventListener("DOMContentLoaded", () => {
-//     fileInputEl = document.querySelector("#file-input");
-//     resultEl = document.querySelector("#result");
-//     document.querySelector("#file-form").addEventListener("submit", (e) => {
-//         e.preventDefault();
-//         send_file();
-//     });
-// });
-
 document.addEventListener("DOMContentLoaded", function () {
     console.log("st");
     const fileSelector = document.querySelector("#fileSelector");
     const fileInput = document.querySelector("#fileInput");
+    const costField = document.querySelector("#costField");
+
+    const optimizeButton = document.querySelector("#optimizeButton");
+    const downloadButton = document.querySelector("#downloadButton");
+    const resultsBlock = document.querySelector("#resultsBlock");
+
+    async function optimizeFile() {
+        console.log(await fileInput.files[0].text());
+
+        let cost = await invoke("optimize_file", {
+            file: await fileInput.files[0].text(),
+            aging: Number(document.querySelector(".aging-input").value),
+            shuffling: document.querySelector("#checkboxShuffling").checked,
+            greedily: document.querySelector("#checkboxGreedily").checked,
+        });
+
+        costField.innerHTML = cost;
+        if (cost == 0) {
+            downloadButton.classList.add("succesful");
+        } else {
+            downloadButton.classList.remove("succesful");
+        }
+    }
+
+    function enableResultsBlock() {
+        optimizeButton.style = "display: none";
+        resultsBlock.style = "";
+    }
+    function disableResultsBlock() {
+        optimizeButton.style = "";
+        resultsBlock.style = "display: none";
+        downloadButton.classList.remove("succesful");
+    }
+
     fileSelector.addEventListener("click", function () {
         fileInput.click();
+        disableResultsBlock();
     });
     fileInput.addEventListener("change", function () {
         if (this.files && this.files[0]) {
@@ -43,20 +58,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    async function send_file() {
-        console.log(await fileInput.files[0].text());
-        let cost = await invoke("work_with", {
-            file: await fileInput.files[0].text(),
-            aging: Number(document.querySelector(".aging-input").value),
-            shuffling: document.querySelector("#checkboxShuffling").checked,
-            greedily: document.querySelector("#checkboxGreedily").checked,
-        });
-
-        console.log(cost);
-    }
-
-    document.querySelector("#optimizeButton").addEventListener("click", (e) => {
+    optimizeButton.addEventListener("click", async (e) => {
         e.preventDefault();
-        send_file();
+        enableResultsBlock();
+        optimizeFile();
+    });
+    document.querySelector("#updateButton").addEventListener("click", (e) => {
+        e.preventDefault();
+        optimizeFile();
+    });
+    downloadButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await invoke("download_file");
     });
 });
