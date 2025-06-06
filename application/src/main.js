@@ -13,8 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
     async function optimizeFile() {
         console.log(await fileInput.files[0].text());
 
-        let cost = await invoke("optimize_file", {
-            file: await fileInput.files[0].text(),
+        let cost = await invoke("optimize_schedule", {
             aging: Number(document.querySelector(".aging-input").value),
             shuffling: document.querySelector("#checkboxShuffling").checked,
             greedily: document.querySelector("#checkboxGreedily").checked,
@@ -38,11 +37,11 @@ document.addEventListener("DOMContentLoaded", function () {
         downloadButton.classList.remove("succesful");
     }
 
-    fileSelector.addEventListener("click", function () {
+    fileSelector.addEventListener("click", async function () {
         fileInput.click();
         disableResultsBlock();
     });
-    fileInput.addEventListener("change", function () {
+    fileInput.addEventListener("change", async function () {
         if (this.files && this.files[0]) {
             const fileName = this.files[0].name;
             const previousFileInfo = fileSelector.querySelector(".file-info");
@@ -56,6 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
             fileInfo.className = "file-info";
             fileSelector.querySelector("div.text-center").appendChild(fileInfo);
         }
+        await invoke("select_file", { file: await fileInput.files[0].text() });
     });
 
     optimizeButton.addEventListener("click", async (e) => {
