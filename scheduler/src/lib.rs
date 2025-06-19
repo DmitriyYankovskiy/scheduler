@@ -154,6 +154,9 @@ impl Schedule {
                     }
                     let index = self.event[l][i];
                     let event = &self.scheme[l][index];
+                    if event.leader_id.is_none() {
+                        continue;
+                    }
                     if event.leader_id == self.scheme[line][b].leader_id {
                         let prev = self.collisions.get(&(l, index)).unwrap_or(&0);
                         self.collisions.insert((l, index), prev + 1);
@@ -180,6 +183,9 @@ impl Schedule {
                     }
                     let index = self.event[l][i];
                     let event = &self.scheme[l][index];
+                    if event.leader_id.is_none() {
+                        continue;
+                    }
                     if event.leader_id == self.scheme[line][a].leader_id {
                         let prev = self.collisions.get(&(l, index)).unwrap_or(&0);
                         self.collisions.insert((l, index), prev + 1);
@@ -191,7 +197,7 @@ impl Schedule {
                         let prev = self
                             .collisions
                             .get(&(l, index))
-                            .unwrap_or_else(|| panic!("{line} {a} {b} {index} {l}"));
+                            .unwrap_or_else(|| panic!("{line} {a} {b} {index} {l} {i}"));
 
                         if *prev > 1 {
                             self.collisions.insert((l, index), prev - 1);
